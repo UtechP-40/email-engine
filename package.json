@@ -7,13 +7,16 @@
     "dev": "next dev",
     "build": "next build",
     "start:worker": "node lib/queues/campaign.worker.js",
-    "start:scheduler": "node scripts/process-scheduled-tasks.js",
+    "start:scheduler": "node scripts/start-scheduler.js",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest --run",
     "test:watch": "vitest",
     "setup-db": "node scripts/setup-database.js",
-    "process-tasks": "node scripts/process-scheduled-tasks.js"
+    "process-tasks": "node scripts/process-scheduled-tasks.js",
+    "test:email": "node scripts/test-send-email.js",
+    "test:connections": "node scripts/test-scheduling-connection.js",
+    "debug:schemas": "node scripts/debug-campaign-schemas.js"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.0.4",

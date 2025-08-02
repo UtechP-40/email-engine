@@ -11,11 +11,18 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Play, User, Mail, Clock, CheckCircle, AlertCircle, ArrowRight } from "lucide-react"
 
-function CampaignSimulator({ campaign, onSimulate }) {
+// Speed settings in ms multipliers
+const SIM_SPEEDS = {
+  instant: 0,
+  fast: 0.02,     // 1s is 1min simulated
+  normal: 1       // realistic
+}
+
+export default function CampaignSimulator({ campaign, onSimulate }) {
   const [simulationData, setSimulationData] = useState({
     testUser: {
       name: "John Doe",
-      email: "john@example.com",
+      email: "pradeep2420pradeep@gmail.com",
       company: "Test Company",
       signup_date: "2024-01-15"
     },
@@ -27,30 +34,29 @@ function CampaignSimulator({ campaign, onSimulate }) {
     },
     simulationSpeed: "normal" // normal, fast, instant
   })
-  
+
   const [simulationResults, setSimulationResults] = useState(null)
   const [isSimulating, setIsSimulating] = useState(false)
+  const [error, setError] = useState("")
 
   // Simulate campaign flow
   const runSimulation = async () => {
+    setError("")
     if (!campaign || !campaign.schema) {
-      alert("Please create a campaign first!")
+      setError("Please create a campaign first!")
       return
     }
-
     setIsSimulating(true)
     setSimulationResults(null)
-
     try {
-      // Simulate the campaign flow
-      const simulation = await simulateCampaignFlow(campaign.schema, simulationData)
+      const simulation = await simulateCampaignFlow(
+        campaign.schema,
+        simulationData,
+        simulationData.simulationSpeed
+      )
       setSimulationResults(simulation)
-      
-      if (onSimulate) {
-        onSimulate(simulation)
-      }
+      if (onSimulate) onSimulate(simulation)
     } catch (error) {
-      console.error("Simulation error:", error)
       setSimulationResults({
         success: false,
         error: error.message,
@@ -61,15 +67,13 @@ function CampaignSimulator({ campaign, onSimulate }) {
     }
   }
 
-  // Update test user data
+  // Controlled input logic
   const updateTestUser = (field, value) => {
     setSimulationData(prev => ({
       ...prev,
       testUser: { ...prev.testUser, [field]: value }
     }))
   }
-
-  // Update user behavior
   const updateUserBehavior = (field, value) => {
     setSimulationData(prev => ({
       ...prev,
@@ -77,33 +81,32 @@ function CampaignSimulator({ campaign, onSimulate }) {
     }))
   }
 
+  // ---------------- UI START -------------------------
   return (
-    <div className="space-y-6">
-      <Card>
+    <div className="space-y-8 max-w-3xl mx-auto">
+      <Card className="shadow-lg border">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Play className="w-5 h-5" />
-            Campaign Simulator
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Play className="w-5 h-5" /> Campaign Simulator
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="user" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="user">👤 Test User</TabsTrigger>
-              <TabsTrigger value="behavior">🎯 Behavior</TabsTrigger>
-              <TabsTrigger value="settings">⚙️ Settings</TabsTrigger>
+        <CardContent className="pb-1">
+          <Tabs defaultValue="user" className="space-y-4" orientation="horizontal">
+            <TabsList className="w-full grid grid-cols-3 rounded-lg bg-gray-50">
+              <TabsTrigger value="user" className="rounded-l-lg"><User className="w-4 h-4 mr-1" />Test User</TabsTrigger>
+              <TabsTrigger value="behavior"><span className="mr-1">🎯</span>Behavior</TabsTrigger>
+              <TabsTrigger value="settings" className="rounded-r-lg"><span className="mr-1">⚙️</span>Settings</TabsTrigger>
             </TabsList>
 
-            {/* Test User Tab */}
-            <TabsContent value="user" className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <TabsContent value="user" className="pt-4">
+              <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4">
                 <div>
                   <Label htmlFor="test-name">Name</Label>
                   <Input
                     id="test-name"
                     value={simulationData.testUser.name}
                     onChange={(e) => updateTestUser("name", e.target.value)}
-                    placeholder="John Doe"
+                    autoComplete="name"
                   />
                 </div>
                 <div>
@@ -113,7 +116,7 @@ function CampaignSimulator({ campaign, onSimulate }) {
                     type="email"
                     value={simulationData.testUser.email}
                     onChange={(e) => updateTestUser("email", e.target.value)}
-                    placeholder="john@example.com"
+                    autoComplete="email"
                   />
                 </div>
                 <div>
@@ -122,7 +125,6 @@ function CampaignSimulator({ campaign, onSimulate }) {
                     id="test-company"
                     value={simulationData.testUser.company}
                     onChange={(e) => updateTestUser("company", e.target.value)}
-                    placeholder="Test Company"
                   />
                 </div>
                 <div>
@@ -137,132 +139,115 @@ function CampaignSimulator({ campaign, onSimulate }) {
               </div>
             </TabsContent>
 
-            {/* User Behavior Tab */}
-            <TabsContent value="behavior" className="space-y-4">
+            <TabsContent value="behavior" className="pt-4">
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 border rounded">
-                  <div>
-                    <Label className="font-medium">Email Opened</Label>
-                    <p className="text-sm text-gray-600">User opened previous emails</p>
+                {[
+                  {
+                    label: "Email Opened",
+                    field: "email_opened",
+                    desc: "User has opened emails.",
+                  },
+                  {
+                    label: "Email Clicked",
+                    field: "email_clicked",
+                    desc: "User has clicked links in emails.",
+                  },
+                  {
+                    label: "Purchase Made",
+                    field: "purchase_made",
+                    desc: "User has made a purchase.",
+                  },
+                ].map(({ label, field, desc }) => (
+                  <div className="flex items-center justify-between p-3 border rounded-md bg-gray-50" key={field}>
+                    <div>
+                      <Label className="font-medium">{label}</Label>
+                      <p className="text-xs text-gray-500">{desc}</p>
+                    </div>
+                    <Select
+                      aria-label={label}
+                      value={simulationData.userBehavior[field] ? "true" : "false"}
+                      onValueChange={v => updateUserBehavior(field, v === "true")}
+                    >
+                      <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">Yes</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Select
-                    value={simulationData.userBehavior.email_opened.toString()}
-                    onValueChange={(value) => updateUserBehavior("email_opened", value === "true")}
-                  >
-                    <SelectTrigger className="w-24">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                      <SelectItem value="true" className="hover:bg-gray-100">Yes</SelectItem>
-                      <SelectItem value="false" className="hover:bg-gray-100">No</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                ))}
 
-                <div className="flex items-center justify-between p-3 border rounded">
-                  <div>
-                    <Label className="font-medium">Email Clicked</Label>
-                    <p className="text-sm text-gray-600">User clicked links in emails</p>
-                  </div>
-                  <Select
-                    value={simulationData.userBehavior.email_clicked.toString()}
-                    onValueChange={(value) => updateUserBehavior("email_clicked", value === "true")}
-                  >
-                    <SelectTrigger className="w-24">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                      <SelectItem value="true" className="hover:bg-gray-100">Yes</SelectItem>
-                      <SelectItem value="false" className="hover:bg-gray-100">No</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex items-center justify-between p-3 border rounded">
-                  <div>
-                    <Label className="font-medium">Purchase Made</Label>
-                    <p className="text-sm text-gray-600">User made a purchase</p>
-                  </div>
-                  <Select
-                    value={simulationData.userBehavior.purchase_made.toString()}
-                    onValueChange={(value) => updateUserBehavior("purchase_made", value === "true")}
-                  >
-                    <SelectTrigger className="w-24">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                      <SelectItem value="true" className="hover:bg-gray-100">Yes</SelectItem>
-                      <SelectItem value="false" className="hover:bg-gray-100">No</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex items-center justify-between p-3 border rounded">
+                <div className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
                   <div>
                     <Label className="font-medium">Days Idle</Label>
-                    <p className="text-sm text-gray-600">Days since last activity</p>
+                    <p className="text-xs text-gray-500">Days since last activity</p>
                   </div>
                   <Input
                     type="number"
                     min="0"
                     max="365"
                     value={simulationData.userBehavior.idle_days}
-                    onChange={(e) => updateUserBehavior("idle_days", parseInt(e.target.value) || 0)}
-                    className="w-24"
+                    onChange={(e) => updateUserBehavior("idle_days", Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-20"
                   />
                 </div>
               </div>
             </TabsContent>
 
-            {/* Settings Tab */}
-            <TabsContent value="settings" className="space-y-4">
+            <TabsContent value="settings" className="pt-4">
               <div>
                 <Label>Simulation Speed</Label>
                 <Select
                   value={simulationData.simulationSpeed}
-                  onValueChange={(value) => setSimulationData(prev => ({...prev, simulationSpeed: value}))}
+                  onValueChange={(value) => setSimulationData(prev => ({ ...prev, simulationSpeed: value }))}
+                  aria-label="Simulation speed"
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                    <SelectItem value="instant" className="hover:bg-gray-100">Instant (No delays)</SelectItem>
-                    <SelectItem value="fast" className="hover:bg-gray-100">Fast (1 second = 1 minute)</SelectItem>
-                    <SelectItem value="normal" className="hover:bg-gray-100">Normal (Real-time delays)</SelectItem>
+                  <SelectContent>
+                    <SelectItem value="instant">Instant <span className="text-xs text-gray-500">(No delays)</span></SelectItem>
+                    <SelectItem value="fast">Fast <span className="text-xs text-gray-500">(1 sec ≈ 1 min)</span></SelectItem>
+                    <SelectItem value="normal">Normal <span className="text-xs text-gray-500">(Real time)</span></SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Choose how fast to run the simulation
-                </p>
+                <p className="text-xs text-gray-500 mt-1">How fast to run the campaign flow simulation.</p>
               </div>
             </TabsContent>
           </Tabs>
 
           <div className="flex gap-2 pt-4">
-            <Button 
-              onClick={runSimulation} 
+            <Button
+              onClick={runSimulation}
               disabled={isSimulating}
-              className="flex-1"
+              className="flex-1 text-white bg-blue-600 hover:bg-blue-700"
+              aria-label="Run simulation"
             >
               {isSimulating ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                <span className="flex items-center">
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                   Simulating...
-                </>
+                </span>
               ) : (
-                <>
+                <span className="flex items-center">
                   <Play className="w-4 h-4 mr-2" />
                   Run Simulation
-                </>
+                </span>
               )}
             </Button>
           </div>
+          {error && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertCircle className="w-4 h-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
-      {/* Simulation Results */}
+      {/* Results Section */}
       {simulationResults && (
-        <Card>
+        <Card className="border rounded-xl shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               {simulationResults.success ? (
@@ -275,91 +260,69 @@ function CampaignSimulator({ campaign, onSimulate }) {
           </CardHeader>
           <CardContent>
             {simulationResults.success ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 p-3 bg-green-50 rounded-lg">
+              <div>
+                <div className="flex items-center gap-4 p-3 bg-green-50 rounded-lg mb-4">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <div>
-                    <p className="font-medium text-green-900">Simulation Completed Successfully</p>
-                    <p className="text-sm text-green-700">
-                      {simulationResults.steps.length} steps executed in {simulationResults.duration}ms
-                    </p>
-                  </div>
+                  <span className="font-medium text-green-900">
+                    Campaign executed: <span className="text-green-700">{simulationResults.steps.length} steps</span>
+                  </span>
+                  <Badge className="bg-blue-100 text-blue-700 ml-auto">
+                    {simulationResults.totalDuration || "Instant"}
+                  </Badge>
                 </div>
-
-                {/* Step-by-step results */}
-                <div className="space-y-3">
-                  <h4 className="font-medium">Campaign Flow:</h4>
-                  {simulationResults.steps.map((step, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
-                      <Badge variant="outline" className="min-w-fit">
-                        Step {index + 1}
-                      </Badge>
-                      
-                      <div className="flex items-center gap-2">
-                        {step.nodeType === "start" && <div className="w-3 h-3 bg-green-500 rounded-full" />}
-                        {step.nodeType === "email" && <Mail className="w-4 h-4 text-blue-600" />}
-                        {step.nodeType === "delay" && <Clock className="w-4 h-4 text-yellow-600" />}
-                        {step.nodeType === "condition" && <div className="w-3 h-3 bg-purple-500 rounded-full" />}
-                        {step.nodeType === "end" && <div className="w-3 h-3 bg-red-500 rounded-full" />}
-                        
-                        <span className="font-medium capitalize">{step.nodeType}</span>
+                <ol className="relative border-l-2 border-blue-100 pl-5 space-y-1">
+                  {simulationResults.steps.map((step, i) => (
+                    <li key={i} className="flex items-center group mb-2">
+                      <div className="absolute -left-2 top-2.5">
+                        {getStepIcon(step.nodeType)}
                       </div>
-
-                      {step.nodeType === "email" && (
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{step.nodeData?.subject || "Email"}</p>
-                          <p className="text-xs text-gray-600">
-                            To: {simulationData.testUser.email}
-                          </p>
+                      <div className="flex-1 bg-white hover:bg-blue-50 transition rounded-lg px-3 py-2 border">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="min-w-fit">Step {i + 1}</Badge>
+                          <span className="capitalize font-medium">{step.nodeType}</span>
+                          {step.nodeType === "condition" && (
+                            <Badge variant={step.conditionResult ? "success" : "destructive"} className="ml-2">
+                              {step.conditionResult ? "Yes" : "No"}
+                            </Badge>
+                          )}
+                          <span className="text-xs text-gray-400 ml-3">{step.description}</span>
                         </div>
+                        {step.nodeType === "email" && (
+                          <div className="text-xs text-blue-900 ml-6 mt-1">To: {simulationData.testUser.email}</div>
+                        )}
+                        {step.nodeType === "delay" && (
+                          <div className="text-xs ml-6 mt-1">
+                            Duration: <strong>{formatStepDuration(step.delayMs, simulationResults.simulationSpeed)}</strong>
+                          </div>
+                        )}
+                        {step.nodeType === "condition" && (
+                          <div className="text-xs ml-6 mt-1">
+                            Check: <span className="capitalize">{step.nodeData?.condition?.type || "unknown"}</span>
+                          </div>
+                        )}
+                      </div>
+                      {i < simulationResults.steps.length - 1 && (
+                        <ArrowRight className="ml-2 w-4 h-4 text-blue-300" />
                       )}
-
-                      {step.nodeType === "delay" && (
-                        <div className="flex-1">
-                          <p className="text-sm">Wait {step.nodeData?.duration || "unknown time"}</p>
-                        </div>
-                      )}
-
-                      {step.nodeType === "condition" && (
-                        <div className="flex-1">
-                          <p className="text-sm">Check: {step.nodeData?.condition?.type || "condition"}</p>
-                          <p className="text-xs text-gray-600">
-                            Result: {step.conditionResult ? "True" : "False"}
-                          </p>
-                        </div>
-                      )}
-
-                      {index < simulationResults.steps.length - 1 && (
-                        <ArrowRight className="w-4 h-4 text-gray-400" />
-                      )}
-                    </div>
+                    </li>
                   ))}
-                </div>
-
-                {/* Summary */}
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <h4 className="font-medium text-blue-900 mb-2">Summary</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-blue-700">Total Steps:</span>
-                      <span className="ml-2 font-medium">{simulationResults.steps.length}</span>
-                    </div>
-                    <div>
-                      <span className="text-blue-700">Emails Sent:</span>
-                      <span className="ml-2 font-medium">
-                        {simulationResults.steps.filter(s => s.nodeType === "email").length}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-blue-700">Conditions Checked:</span>
-                      <span className="ml-2 font-medium">
-                        {simulationResults.steps.filter(s => s.nodeType === "condition").length}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-blue-700">Total Duration:</span>
-                      <span className="ml-2 font-medium">{simulationResults.totalDuration || "Instant"}</span>
-                    </div>
+                </ol>
+                {/* Summary Stats */}
+                <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="text-xs text-blue-900">
+                    <span className="text-sm font-bold">{simulationResults.steps.length}</span><br />Steps
+                  </div>
+                  <div className="text-xs text-blue-900">
+                    <span className="text-sm font-bold">{simulationResults.steps.filter(s => s.nodeType === "email").length}</span>
+                    <br />Emails Sent
+                  </div>
+                  <div className="text-xs text-blue-900">
+                    <span className="text-sm font-bold">{simulationResults.steps.filter(s => s.nodeType === "condition").length}</span>
+                    <br />Conditions Checked
+                  </div>
+                  <div className="text-xs text-blue-900">
+                    <span className="text-sm font-bold">{simulationResults.totalDuration || "Instant"}</span>
+                    <br />Total Flow Time
                   </div>
                 </div>
               </div>
@@ -378,29 +341,45 @@ function CampaignSimulator({ campaign, onSimulate }) {
   )
 }
 
-// Campaign simulation logic
-async function simulateCampaignFlow(schema, simulationData) {
+
+// -------------------- LOGIC/HELPERS ------------------------
+
+function getStepIcon(type) {
+  switch (type) {
+    case "start": return <span className="block w-4 h-4 bg-green-500 rounded-full" title="Start" />
+    case "email": return <Mail className="w-4 h-4 text-blue-600" title="Email" />
+    case "delay": return <Clock className="w-4 h-4 text-yellow-600" title="Delay" />
+    case "condition": return <span className="block w-4 h-4 bg-purple-500 rounded-full" title="Condition" />
+    case "end": return <span className="block w-4 h-4 bg-red-500 rounded-full" title="End" />
+    default: return <span className="block w-4 h-4 bg-gray-400 rounded-full" />
+  }
+}
+
+function formatStepDuration(ms, speed = "normal") {
+  if (ms == null) return "-"
+  const simMultiplier = SIM_SPEEDS[speed] ?? 1
+  const simMs = Math.round(ms * simMultiplier)
+  if (simMs < 2000) return `${simMs}ms`
+  if (simMs < 60000) return `${Math.round(simMs / 1000)}s`
+  if (simMs < 3600000) return `${Math.round(simMs / 60000)}min`
+  if (simMs < 86400000) return `${Math.round(simMs / 3600000)}h`
+  return `${Math.round(simMs / 86400000)}d`
+}
+
+// Main simulation engine. Accepts simulationSpeed ("instant", "fast", "normal")
+async function simulateCampaignFlow(schema, simulationData, simulationSpeed = "normal") {
   const startTime = Date.now()
   const steps = []
-  
-  if (!schema || !schema.nodes || schema.nodes.length === 0) {
-    throw new Error("Invalid campaign schema")
-  }
+  const simMultiplier = SIM_SPEEDS[simulationSpeed] ?? 1
 
+  if (!schema?.nodes?.length) throw new Error("Invalid campaign schema")
   // Find start node
-  let currentNodeId = schema.nodes.find(node => node.type === "start")?.id
-  if (!currentNodeId) {
-    currentNodeId = schema.nodes[0]?.id
-  }
+  let currentNodeId = schema.nodes.find(n => n.type === "start")?.id || schema.nodes[0].id
+  if (!currentNodeId) throw new Error("No start node in campaign")
 
-  if (!currentNodeId) {
-    throw new Error("No start node found")
-  }
+  const maxSteps = 100 // (Fail-safe for infinite loop)
 
-  let stepCount = 0
-  const maxSteps = 50 // Prevent infinite loops
-
-  while (currentNodeId && stepCount < maxSteps) {
+  for (let stepCount = 0; currentNodeId && stepCount < maxSteps; stepCount++) {
     const currentNode = schema.nodes.find(n => n.id === currentNodeId)
     if (!currentNode) break
 
@@ -408,145 +387,123 @@ async function simulateCampaignFlow(schema, simulationData) {
       nodeId: currentNodeId,
       nodeType: currentNode.type,
       nodeData: currentNode.data,
-      timestamp: new Date(),
+      description: "",
       processed: true
     }
 
-    // Process different node types
+    // -- Step Logic --
     switch (currentNode.type) {
       case "start":
         step.description = "Campaign started"
         break
-
       case "email":
         step.description = `Email sent: ${currentNode.data?.subject || "Untitled"}`
         step.emailPreview = processEmailTemplate(currentNode.data, simulationData.testUser)
         break
-
-      case "delay":
-        const duration = currentNode.data?.duration
-        if (typeof duration === "object") {
-          step.description = `Wait ${duration.value} ${duration.unit}`
-          step.delayMs = convertToMilliseconds(duration.value, duration.unit)
+      case "delay": {
+        let ms = 0
+        if (typeof currentNode.data?.duration === "object" && currentNode.data.duration) {
+          ms = convertToMilliseconds(currentNode.data.duration.value, currentNode.data.duration.unit)
         } else {
-          step.description = `Wait ${duration || "unknown time"}`
-          step.delayMs = parseDurationString(duration)
+          ms = parseDurationString(currentNode.data?.duration)
         }
+        step.description = `Wait ${currentNode.data?.duration || "unknown"}`
+        step.delayMs = ms
+        // Optionally simulate delay with await
+        if (simMultiplier > 0) await sleep(ms * simMultiplier)
         break
-
-      case "condition":
-        const condition = currentNode.data?.condition
-        const conditionResult = evaluateCondition(condition, simulationData.userBehavior)
-        step.description = `Condition: ${condition?.type || "unknown"}`
-        step.conditionResult = conditionResult
+      }
+      case "condition": {
+        const c = currentNode.data?.condition
+        const condResult = evaluateCondition(c, simulationData.userBehavior)
+        step.description = `Condition: ${c?.type || "unknown"}`
+        step.conditionResult = condResult
         break
-
+      }
       case "end":
         step.description = "Campaign completed"
         break
-
       default:
         step.description = `Unknown node type: ${currentNode.type}`
     }
-
     steps.push(step)
 
-    // Find next node
-    if (currentNode.type === "end") {
-      break
-    } else if (currentNode.type === "condition") {
-      const conditionResult = step.conditionResult
-      const edgeType = conditionResult ? "true" : "false"
+    // Determine next node
+    if (currentNode.type === "end") break
+    if (currentNode.type === "condition") {
+      const condResult = step.conditionResult
+      const edgeType = condResult ? "true" : "false"
+      // Edge type-based routing
       const nextEdge = schema.edges.find(e => e.source === currentNodeId && e.type === edgeType)
+        || schema.edges.find(e => e.source === currentNodeId) // fallback: any
       currentNodeId = nextEdge?.target
     } else {
       const nextEdge = schema.edges.find(e => e.source === currentNodeId)
       currentNodeId = nextEdge?.target
     }
-
-    stepCount++
   }
 
+  // Use wall clock for run time, but steps' .delayMs for campaign duration!
   const endTime = Date.now()
-  const duration = endTime - startTime
-
   return {
     success: true,
     steps,
-    duration,
-    totalDuration: calculateTotalCampaignDuration(steps),
+    duration: endTime - startTime,
+    simulationSpeed,
+    totalDuration: calculateTotalCampaignDuration(steps, simulationSpeed),
     simulationData
   }
 }
 
-// Helper functions
-function processEmailTemplate(emailData, userData) {
-  if (!emailData) return { subject: "", content: "" }
 
+// ------ Helper/utility logic as before ------
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+function processEmailTemplate(emailData, userData) {
+  if (!emailData) return {}
   let subject = emailData.subject || ""
   let content = emailData.content || ""
-
-  // Replace template variables
   Object.keys(userData).forEach(key => {
-    const placeholder = new RegExp(`\\{\\{${key}\\}\\}`, 'g')
-    subject = subject.replace(placeholder, userData[key] || "")
-    content = content.replace(placeholder, userData[key] || "")
+    subject = subject.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), userData[key] || "")
+    content = content.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), userData[key] || "")
   })
-
   return { subject, content }
 }
 
 function evaluateCondition(condition, userBehavior) {
   if (!condition) return false
-
   switch (condition.type) {
-    case "email_opened":
-      return userBehavior.email_opened
-    case "email_clicked":
-      return userBehavior.email_clicked
-    case "purchase_made":
-      return userBehavior.purchase_made
-    case "idle_time":
-      return userBehavior.idle_days >= (condition.days || 0)
-    default:
-      return false
+    case "email_opened": return userBehavior.email_opened
+    case "email_clicked": return userBehavior.email_clicked
+    case "purchase_made": return userBehavior.purchase_made
+    case "idle_time": return (userBehavior.idle_days || 0) >= (condition.days || 0)
+    default: return false
   }
 }
 
 function convertToMilliseconds(value, unit) {
+  value = Number(value || 0)
   switch (unit) {
-    case "minutes": return value * 60 * 1000
-    case "hours": return value * 60 * 60 * 1000
-    case "days": return value * 24 * 60 * 60 * 1000
-    case "weeks": return value * 7 * 24 * 60 * 60 * 1000
+    case "minutes": case "minute": return value * 60 * 1000
+    case "hours": case "hour": return value * 60 * 60 * 1000
+    case "days": case "day": return value * 24 * 60 * 60 * 1000
+    case "weeks": case "week": return value * 7 * 24 * 60 * 60 * 1000
     default: return 0
   }
 }
-
 function parseDurationString(duration) {
   if (!duration) return 0
-  const match = duration.match(/(\d+)\s*(minutes?|hours?|days?)/)
+  const match = duration.trim().match(/(\d+)\s*(minute|hour|day|week|minutes|hours|days|weeks)/i)
   if (!match) return 0
-  
-  const value = parseInt(match[1])
-  const unit = match[2]
-  return convertToMilliseconds(value, unit)
+  return convertToMilliseconds(match[1], match[2])
 }
-
-function calculateTotalCampaignDuration(steps) {
-  const totalMs = steps.reduce((total, step) => {
-    return total + (step.delayMs || 0)
-  }, 0)
-
-  if (totalMs < 60000) {
-    return `${Math.round(totalMs / 1000)} seconds`
-  } else if (totalMs < 3600000) {
-    return `${Math.round(totalMs / 60000)} minutes`
-  } else if (totalMs < 86400000) {
-    return `${Math.round(totalMs / 3600000)} hours`
-  } else {
-    return `${Math.round(totalMs / 86400000)} days`
-  }
+function calculateTotalCampaignDuration(steps, simulationSpeed = "normal") {
+  const simMultiplier = SIM_SPEEDS[simulationSpeed] ?? 1
+  const total = steps.reduce((sum, step) => sum + (step.delayMs || 0), 0) * simMultiplier
+  if (total < 2000) return `${total}ms`
+  if (total < 60000) return `${Math.round(total / 1000)}s`
+  if (total < 3600000) return `${Math.round(total / 60000)}min`
+  if (total < 86400000) return `${Math.round(total / 3600000)}h`
+  return `${Math.round(total / 86400000)}d`
 }
-
-export default CampaignSimulator

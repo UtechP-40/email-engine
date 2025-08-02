@@ -2,11 +2,17 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2 } from "lucide-react"
+import { Loader2, Mail, Lock } from "lucide-react"
 
 export default function LoginForm({ onLogin }) {
   const [formData, setFormData] = useState({
@@ -24,9 +30,7 @@ export default function LoginForm({ onLogin }) {
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       })
 
@@ -39,7 +43,7 @@ export default function LoginForm({ onLogin }) {
       } else {
         setError(data.error || "Login failed")
       }
-    } catch (error) {
+    } catch {
       setError("Network error. Please try again.")
     } finally {
       setLoading(false)
@@ -47,58 +51,106 @@ export default function LoginForm({ onLogin }) {
   }
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
+    setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle className="text-2xl">Login</CardTitle>
-        <CardDescription>Enter your credentials to access the campaign engine</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+    <div className="min-h-screen bg-gradient-to-tr from-indigo-600 via-purple-700 to-pink-700 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        {/* Optionally insert a logo or branding here */}
+        <div className="text-center">
+          <h1 className="text-white text-4xl font-extrabold tracking-tight sm:text-5xl">
+            Welcome Back
+          </h1>
+          <p className="mt-2 text-indigo-200">
+            Sign in to access your campaign dashboard
+          </p>
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="your@email.com"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
-          </div>
+        <Card className="shadow-xl rounded-2xl border border-white/20 bg-white/90 backdrop-blur-md">
+          <CardHeader>
+            <CardTitle className="text-3xl text-gray-900 text-center">
+              Sign in
+            </CardTitle>
+            <CardDescription className="text-center text-gray-600">
+              Enter your email and password below
+            </CardDescription>
+          </CardHeader>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="Enter your password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
-          </div>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+              {error && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Sign In
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+              <div>
+                <Label htmlFor="email" className="sr-only">
+                  Email address
+                </Label>
+                <div className="relative rounded-md shadow-sm">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 pointer-events-none">
+                    <Mail className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    placeholder="Email address"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="pl-10 focus:ring-indigo-500 focus:border-indigo-500"
+                    aria-invalid={!!error}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="password" className="sr-only">
+                  Password
+                </Label>
+                <div className="relative rounded-md shadow-sm">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 pointer-events-none">
+                    <Lock className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    placeholder="Password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="pl-10 focus:ring-indigo-500 focus:border-indigo-500"
+                    aria-invalid={!!error}
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full flex justify-center py-3 text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 font-semibold rounded-lg transition"
+                disabled={loading}
+                aria-busy={loading}
+              >
+                {loading && (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin text-white" />
+                )}
+                Sign In
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Optional footer or links */}
+        <p className="text-center text-indigo-200 text-sm mt-4">
+          &copy; {new Date().getFullYear()} Your Company. All rights reserved.
+        </p>
+      </div>
+    </div>
   )
 }
