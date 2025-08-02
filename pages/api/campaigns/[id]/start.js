@@ -1,7 +1,7 @@
 import { getDatabase } from '../../../../lib/db.js';
 import { requireAuth } from '../../../../lib/auth.js';
 import { campaignEngine } from '../../../../lib/campaign-engine.js';
-import { Campaign } from '../../../../models/Campaign.js';
+import Campaign from '../../../../models/Campaign.js';
 import { ObjectId } from 'mongodb';
 
 async function handler(req, res) {
